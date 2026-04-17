@@ -2,20 +2,20 @@ from storectl.application.monitor_cluster import MonitorClusterUseCase
 from storectl.domain.models.cluster_status import ClusterStatus
 from storectl.domain.models.node import NodeStatus
 from storectl.ports.inbound.i_monitoring_use_case import IMonitoringUseCase
-from tests.conftest import FakeKubectlPort, FakeNodeMetricsPort, make_node
+from tests.conftest import FakeNodePort, FakeNodeMetricsPort, make_node
 
 
 class TestMonitorClusterUseCase:
     def test_implements_inbound_port(self) -> None:
         use_case = MonitorClusterUseCase(
-            kubectl_port=FakeKubectlPort(),
+            kubectl_port=FakeNodePort(),
             metrics_port=FakeNodeMetricsPort(),
         )
         assert isinstance(use_case, IMonitoringUseCase)
 
     def test_execute_returns_cluster_status(self) -> None:
         use_case = MonitorClusterUseCase(
-            kubectl_port=FakeKubectlPort(),
+            kubectl_port=FakeNodePort(),
             metrics_port=FakeNodeMetricsPort(),
         )
         result = use_case.execute()
@@ -24,7 +24,7 @@ class TestMonitorClusterUseCase:
     def test_full_flow_healthy_cluster(self) -> None:
         nodes = [make_node("node-1"), make_node("node-2")]
         use_case = MonitorClusterUseCase(
-            kubectl_port=FakeKubectlPort(nodes=nodes),
+            kubectl_port=FakeNodePort(nodes=nodes),
             metrics_port=FakeNodeMetricsPort(),
         )
         result = use_case.execute()
@@ -37,7 +37,7 @@ class TestMonitorClusterUseCase:
             make_node("node-2", NodeStatus.NOT_READY),
         ]
         use_case = MonitorClusterUseCase(
-            kubectl_port=FakeKubectlPort(nodes=nodes),
+            kubectl_port=FakeNodePort(nodes=nodes),
             metrics_port=FakeNodeMetricsPort(),
         )
         result = use_case.execute()

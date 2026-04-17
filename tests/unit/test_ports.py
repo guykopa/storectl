@@ -4,7 +4,8 @@ from typing import List
 from storectl.domain.models.node import Node, NodeStatus
 from storectl.domain.models.cluster_status import ClusterStatus
 from storectl.domain.models.diagnostic_report import DiagnosticReport, DiagnosticSeverity
-from storectl.ports.outbound.i_kubectl_port import IKubectlPort
+from storectl.ports.outbound.i_node_port import INodePort
+from storectl.ports.outbound.i_deployment_port import IDeploymentPort
 from storectl.ports.outbound.i_node_metrics_port import INodeMetricsPort
 from storectl.ports.outbound.i_log_reader_port import ILogReaderPort
 from storectl.ports.inbound.i_monitoring_use_case import IMonitoringUseCase
@@ -25,30 +26,41 @@ def make_node(name: str = "node-1") -> Node:
 
 # --- Outbound ports ---
 
-class TestIKubectlPort:
+class TestINodePort:
     def test_cannot_instantiate_without_implementation(self) -> None:
         with pytest.raises(TypeError):
-            IKubectlPort()  # type: ignore
+            INodePort()  # type: ignore
 
     def test_concrete_implementation_is_accepted(self) -> None:
-        class FakeKubectlPort(IKubectlPort):
+        class FakeNodePort(INodePort):
             def get_nodes(self) -> List[Node]:
                 return [make_node()]
 
             def describe_node(self, name: str) -> Node:
                 return make_node(name)
 
-            def rollout(self, deployment: str) -> None:
+        port = FakeNodePort()
+        assert port.get_nodes() == [make_node()]
+
+
+class TestIDeploymentPort:
+    def test_cannot_instantiate_without_implementation(self) -> None:
+        with pytest.raises(TypeError):
+            IDeploymentPort()  # type: ignore
+
+    def test_concrete_implementation_is_accepted(self) -> None:
+        class FakeDeploymentPort(IDeploymentPort):
+            def rollout(self, deployment: str, namespace: str = "default") -> None:
                 pass
 
-            def rollout_status(self, deployment: str) -> bool:
+            def rollout_status(self, deployment: str, namespace: str = "default") -> bool:
                 return True
 
-            def rollout_undo(self, deployment: str) -> None:
+            def rollout_undo(self, deployment: str, namespace: str = "default") -> None:
                 pass
 
-        port = FakeKubectlPort()
-        assert port.get_nodes() == [make_node()]
+        port = FakeDeploymentPort()
+        assert port.rollout_status("app", namespace="kube-system") is True
 
 
 class TestINodeMetricsPort:
@@ -124,8 +136,8 @@ class TestIDeploymentUseCase:
 
     def test_concrete_implementation_is_accepted(self) -> None:
         class FakeDeploymentUseCase(IDeploymentUseCase):
-            def execute(self, deployment: str) -> bool:
+            def execute(self, deployment: str, namespace: str = "default") -> bool:
                 return True
 
         use_case = FakeDeploymentUseCase()
-        assert use_case.execute("deploy-1") is True
+        assert use_case.execute("deploy-1", namespace="storectl") is True

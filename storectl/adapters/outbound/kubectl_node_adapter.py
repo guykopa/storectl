@@ -4,7 +4,7 @@ from typing import List
 
 from storectl.domain.exceptions import NodeNotFoundError
 from storectl.domain.models.node import Node, NodeStatus
-from storectl.ports.outbound.i_kubectl_port import IKubectlPort
+from storectl.ports.outbound.i_node_port import INodePort
 
 _TIMEOUT = 30
 
@@ -28,8 +28,8 @@ def _parse_node(data: dict) -> Node:
     )
 
 
-class KubectlAdapter(IKubectlPort):
-    """Calls kubectl via subprocess to interact with the Kubernetes cluster."""
+class KubectlNodeAdapter(INodePort):
+    """Calls kubectl via subprocess to read node state from the cluster."""
 
     def get_nodes(self) -> List[Node]:
         result = subprocess.run(
@@ -47,22 +47,3 @@ class KubectlAdapter(IKubectlPort):
         if result.returncode != 0:
             raise NodeNotFoundError(name)
         return _parse_node(json.loads(result.stdout))
-
-    def rollout(self, deployment: str) -> None:
-        subprocess.run(
-            ["kubectl", "rollout", "restart", f"deployment/{deployment}"],
-            capture_output=True, text=True, timeout=_TIMEOUT,
-        )
-
-    def rollout_status(self, deployment: str) -> bool:
-        result = subprocess.run(
-            ["kubectl", "rollout", "status", f"deployment/{deployment}"],
-            capture_output=True, text=True, timeout=_TIMEOUT,
-        )
-        return result.returncode == 0
-
-    def rollout_undo(self, deployment: str) -> None:
-        subprocess.run(
-            ["kubectl", "rollout", "undo", f"deployment/{deployment}"],
-            capture_output=True, text=True, timeout=_TIMEOUT,
-        )

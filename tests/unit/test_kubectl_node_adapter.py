@@ -1,12 +1,11 @@
 import json
-import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from storectl.domain.exceptions import NodeNotFoundError
 from storectl.domain.models.node import NodeStatus
-from storectl.adapters.outbound.kubectl_adapter import KubectlAdapter
+from storectl.adapters.outbound.kubectl_node_adapter import KubectlNodeAdapter
 
 NODES_JSON = {
     "items": [
@@ -44,11 +43,11 @@ def make_completed_process(stdout: str, returncode: int = 0) -> MagicMock:
     return mock
 
 
-class TestKubectlAdapterGetNodes:
+class TestKubectlNodeAdapterGetNodes:
     def test_returns_list_of_nodes(self) -> None:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = make_completed_process(json.dumps(NODES_JSON))
-            adapter = KubectlAdapter()
+            adapter = KubectlNodeAdapter()
             nodes = adapter.get_nodes()
         assert len(nodes) == 1
         assert nodes[0].name == "node-1"
@@ -56,7 +55,7 @@ class TestKubectlAdapterGetNodes:
     def test_node_status_ready(self) -> None:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = make_completed_process(json.dumps(NODES_JSON))
-            adapter = KubectlAdapter()
+            adapter = KubectlNodeAdapter()
             nodes = adapter.get_nodes()
         assert nodes[0].status == NodeStatus.READY
 
@@ -64,14 +63,14 @@ class TestKubectlAdapterGetNodes:
         data = {"items": [NODE_NOT_READY_JSON]}
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = make_completed_process(json.dumps(data))
-            adapter = KubectlAdapter()
+            adapter = KubectlNodeAdapter()
             nodes = adapter.get_nodes()
         assert nodes[0].status == NodeStatus.NOT_READY
 
     def test_subprocess_called_with_correct_args(self) -> None:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = make_completed_process(json.dumps(NODES_JSON))
-            adapter = KubectlAdapter()
+            adapter = KubectlNodeAdapter()
             adapter.get_nodes()
         args = mock_run.call_args[0][0]
         assert "kubectl" in args
@@ -81,48 +80,17 @@ class TestKubectlAdapterGetNodes:
         assert "json" in args
 
 
-class TestKubectlAdapterDescribeNode:
+class TestKubectlNodeAdapterDescribeNode:
     def test_returns_node(self) -> None:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = make_completed_process(json.dumps(NODE_JSON))
-            adapter = KubectlAdapter()
+            adapter = KubectlNodeAdapter()
             node = adapter.describe_node("node-1")
         assert node.name == "node-1"
 
     def test_raises_node_not_found_on_error(self) -> None:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = make_completed_process("", returncode=1)
-            adapter = KubectlAdapter()
+            adapter = KubectlNodeAdapter()
             with pytest.raises(NodeNotFoundError):
                 adapter.describe_node("node-99")
-
-
-class TestKubectlAdapterRollout:
-    def test_rollout_calls_kubectl(self) -> None:
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = make_completed_process("")
-            adapter = KubectlAdapter()
-            adapter.rollout("my-deployment")
-        args = mock_run.call_args[0][0]
-        assert "rollout" in args
-        assert "my-deployment" in " ".join(args)
-
-    def test_rollout_status_true_when_success(self) -> None:
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = make_completed_process("", returncode=0)
-            adapter = KubectlAdapter()
-            assert adapter.rollout_status("my-deployment") is True
-
-    def test_rollout_status_false_when_failure(self) -> None:
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = make_completed_process("", returncode=1)
-            adapter = KubectlAdapter()
-            assert adapter.rollout_status("my-deployment") is False
-
-    def test_rollout_undo_calls_kubectl(self) -> None:
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = make_completed_process("")
-            adapter = KubectlAdapter()
-            adapter.rollout_undo("my-deployment")
-        args = mock_run.call_args[0][0]
-        assert "undo" in args

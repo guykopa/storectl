@@ -19,7 +19,8 @@ class TestCliMonitor:
         cluster = ClusterStatus(nodes=[make_node("node-1")])
         with patch("storectl.cli.cli.MonitorClusterUseCase") as mock_uc:
             mock_uc.return_value.execute.return_value = cluster
-            with patch("storectl.cli.cli.KubectlAdapter"), patch("storectl.cli.cli.ProcMetricsAdapter"):
+            with patch("storectl.cli.cli.KubectlNodeAdapter"), \
+                 patch("storectl.cli.cli.ProcMetricsAdapter"):
                 code = run_cli("monitor")
         assert code == 0
 
@@ -28,7 +29,8 @@ class TestCliMonitor:
         cluster = ClusterStatus(nodes=[make_node("node-1", NodeStatus.NOT_READY)])
         with patch("storectl.cli.cli.MonitorClusterUseCase") as mock_uc:
             mock_uc.return_value.execute.return_value = cluster
-            with patch("storectl.cli.cli.KubectlAdapter"), patch("storectl.cli.cli.ProcMetricsAdapter"):
+            with patch("storectl.cli.cli.KubectlNodeAdapter"), \
+                 patch("storectl.cli.cli.ProcMetricsAdapter"):
                 code = run_cli("monitor")
         assert code == 1
 
@@ -40,7 +42,8 @@ class TestCliDiagnose:
         )
         with patch("storectl.cli.cli.DiagnoseNodeUseCase") as mock_uc:
             mock_uc.return_value.execute.return_value = report
-            with patch("storectl.cli.cli.KubectlAdapter"), patch("storectl.cli.cli.JournalctlAdapter"):
+            with patch("storectl.cli.cli.KubectlNodeAdapter"), \
+                 patch("storectl.cli.cli.JournalctlAdapter"):
                 code = run_cli("diagnose", "node-1")
         assert code == 0
 
@@ -50,14 +53,16 @@ class TestCliDiagnose:
         )
         with patch("storectl.cli.cli.DiagnoseNodeUseCase") as mock_uc:
             mock_uc.return_value.execute.return_value = report
-            with patch("storectl.cli.cli.KubectlAdapter"), patch("storectl.cli.cli.JournalctlAdapter"):
+            with patch("storectl.cli.cli.KubectlNodeAdapter"), \
+                 patch("storectl.cli.cli.JournalctlAdapter"):
                 code = run_cli("diagnose", "node-1")
         assert code == 1
 
     def test_diagnose_exits_two_on_node_not_found(self) -> None:
         with patch("storectl.cli.cli.DiagnoseNodeUseCase") as mock_uc:
             mock_uc.return_value.execute.side_effect = NodeNotFoundError("node-99")
-            with patch("storectl.cli.cli.KubectlAdapter"), patch("storectl.cli.cli.JournalctlAdapter"):
+            with patch("storectl.cli.cli.KubectlNodeAdapter"), \
+                 patch("storectl.cli.cli.JournalctlAdapter"):
                 code = run_cli("diagnose", "node-99")
         assert code == 2
 
@@ -66,13 +71,22 @@ class TestCliUpdate:
     def test_update_exits_zero_on_success(self) -> None:
         with patch("storectl.cli.cli.RollingUpdateUseCase") as mock_uc:
             mock_uc.return_value.execute.return_value = True
-            with patch("storectl.cli.cli.KubectlAdapter"):
+            with patch("storectl.cli.cli.KubectlDeploymentAdapter"):
                 code = run_cli("update", "my-deployment")
         assert code == 0
+
+    def test_update_exits_zero_with_explicit_namespace(self) -> None:
+        with patch("storectl.cli.cli.RollingUpdateUseCase") as mock_uc:
+            mock_uc.return_value.execute.return_value = True
+            with patch("storectl.cli.cli.KubectlDeploymentAdapter"):
+                code = run_cli("update", "my-deployment", "--namespace", "storectl")
+        assert code == 0
+        _, kwargs = mock_uc.return_value.execute.call_args
+        assert kwargs.get("namespace") == "storectl" or mock_uc.return_value.execute.call_args[0][1] == "storectl"
 
     def test_update_exits_one_on_failure(self) -> None:
         with patch("storectl.cli.cli.RollingUpdateUseCase") as mock_uc:
             mock_uc.return_value.execute.side_effect = DeploymentFailedError("my-deployment")
-            with patch("storectl.cli.cli.KubectlAdapter"):
+            with patch("storectl.cli.cli.KubectlDeploymentAdapter"):
                 code = run_cli("update", "my-deployment")
         assert code == 1

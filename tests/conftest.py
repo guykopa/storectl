@@ -5,7 +5,8 @@ from storectl.domain.models.node import Node, NodeStatus
 from storectl.domain.models.pod import Pod, PodStatus
 from storectl.domain.models.cluster_status import ClusterStatus
 from storectl.domain.models.diagnostic_report import DiagnosticReport, DiagnosticSeverity
-from storectl.ports.outbound.i_kubectl_port import IKubectlPort
+from storectl.ports.outbound.i_node_port import INodePort
+from storectl.ports.outbound.i_deployment_port import IDeploymentPort
 from storectl.ports.outbound.i_node_metrics_port import INodeMetricsPort
 from storectl.ports.outbound.i_log_reader_port import ILogReaderPort
 
@@ -48,12 +49,11 @@ def make_pod(
 
 # --- Fake ports ---
 
-class FakeKubectlPort(IKubectlPort):
-    """In-memory kubectl port for unit tests."""
+class FakeNodePort(INodePort):
+    """In-memory node port for unit tests."""
 
     def __init__(self, nodes: List[Node] | None = None) -> None:
         self._nodes = nodes or [make_node()]
-        self._rollout_succeeds = True
 
     def get_nodes(self) -> List[Node]:
         return self._nodes
@@ -65,13 +65,20 @@ class FakeKubectlPort(IKubectlPort):
         from storectl.domain.exceptions import NodeNotFoundError
         raise NodeNotFoundError(name)
 
-    def rollout(self, deployment: str) -> None:
+
+class FakeDeploymentPort(IDeploymentPort):
+    """In-memory deployment port for unit tests."""
+
+    def __init__(self, rollout_succeeds: bool = True) -> None:
+        self._rollout_succeeds = rollout_succeeds
+
+    def rollout(self, deployment: str, namespace: str = "default") -> None:
         pass
 
-    def rollout_status(self, deployment: str) -> bool:
+    def rollout_status(self, deployment: str, namespace: str = "default") -> bool:
         return self._rollout_succeeds
 
-    def rollout_undo(self, deployment: str) -> None:
+    def rollout_undo(self, deployment: str, namespace: str = "default") -> None:
         pass
 
 
@@ -113,8 +120,13 @@ def healthy_cluster(ready_node: Node) -> ClusterStatus:
 
 
 @pytest.fixture
-def fake_kubectl() -> FakeKubectlPort:
-    return FakeKubectlPort()
+def fake_node_port() -> FakeNodePort:
+    return FakeNodePort()
+
+
+@pytest.fixture
+def fake_deployment_port() -> FakeDeploymentPort:
+    return FakeDeploymentPort()
 
 
 @pytest.fixture

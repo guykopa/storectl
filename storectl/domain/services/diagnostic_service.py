@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 
 from storectl.domain.models.diagnostic_report import DiagnosticReport, DiagnosticSeverity
-from storectl.ports.outbound.i_kubectl_port import IKubectlPort
+from storectl.ports.outbound.i_node_port import INodePort
 from storectl.ports.outbound.i_log_reader_port import ILogReaderPort
 
 DEFAULT_PATTERNS: Dict[str, str] = {
@@ -15,7 +15,7 @@ class DiagnosticService:
 
     def __init__(
         self,
-        kubectl_port: IKubectlPort,
+        kubectl_port: INodePort,
         log_port: ILogReaderPort,
         patterns: Optional[Dict[str, str]] = None,
     ) -> None:

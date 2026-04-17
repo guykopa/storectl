@@ -5,7 +5,8 @@ from rich.console import Console
 from rich.table import Table
 
 from storectl.adapters.outbound.journalctl_adapter import JournalctlAdapter
-from storectl.adapters.outbound.kubectl_adapter import KubectlAdapter
+from storectl.adapters.outbound.kubectl_deployment_adapter import KubectlDeploymentAdapter
+from storectl.adapters.outbound.kubectl_node_adapter import KubectlNodeAdapter
 from storectl.adapters.outbound.proc_metrics_adapter import ProcMetricsAdapter
 from storectl.application.diagnose_node import DiagnoseNodeUseCase
 from storectl.application.monitor_cluster import MonitorClusterUseCase
@@ -17,7 +18,7 @@ console = Console()
 
 def _cmd_monitor() -> int:
     use_case = MonitorClusterUseCase(
-        kubectl_port=KubectlAdapter(),
+        kubectl_port=KubectlNodeAdapter(),
         metrics_port=ProcMetricsAdapter(),
     )
     status = use_case.execute()
@@ -34,7 +35,7 @@ def _cmd_monitor() -> int:
 
 def _cmd_diagnose(node_name: str) -> int:
     use_case = DiagnoseNodeUseCase(
-        kubectl_port=KubectlAdapter(),
+        kubectl_port=KubectlNodeAdapter(),
         log_port=JournalctlAdapter(),
     )
     try:
@@ -50,10 +51,10 @@ def _cmd_diagnose(node_name: str) -> int:
     return 1 if report.is_critical() else 0
 
 
-def _cmd_update(deployment: str) -> int:
-    use_case = RollingUpdateUseCase(kubectl_port=KubectlAdapter())
+def _cmd_update(deployment: str, namespace: str = "default") -> int:
+    use_case = RollingUpdateUseCase(kubectl_port=KubectlDeploymentAdapter())
     try:
-        use_case.execute(deployment)
+        use_case.execute(deployment, namespace=namespace)
     except DeploymentFailedError as e:
         console.print(f"[red]Deployment failed:[/red] {e}")
         return 1
@@ -72,6 +73,7 @@ def main() -> int:
 
     update_parser = subparsers.add_parser("update", help="Rolling update a deployment")
     update_parser.add_argument("deployment", help="Deployment name")
+    update_parser.add_argument("--namespace", "-n", default="default", help="Kubernetes namespace")
 
     args = parser.parse_args()
 
@@ -80,7 +82,7 @@ def main() -> int:
     if args.command == "diagnose":
         return _cmd_diagnose(args.node)
     if args.command == "update":
-        return _cmd_update(args.deployment)
+        return _cmd_update(args.deployment, namespace=args.namespace)
 
     parser.print_help()
     return 0
