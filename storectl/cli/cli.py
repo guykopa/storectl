@@ -11,7 +11,6 @@ from storectl.application.diagnose_node import DiagnoseNodeUseCase
 from storectl.application.monitor_cluster import MonitorClusterUseCase
 from storectl.application.rolling_update import RollingUpdateUseCase
 from storectl.domain.exceptions import DeploymentFailedError, NodeNotFoundError
-from storectl.domain.models.diagnostic_report import DiagnosticSeverity
 
 console = Console()
 
