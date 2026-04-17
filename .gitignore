@@ -1,0 +1,40 @@
+ARCHITECTURE.md
+CLAUDE.md
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+
+# Tests
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Kubernetes
+*.kubeconfig
+kubeconfig
+
+# Sphinx
+docs/_build/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

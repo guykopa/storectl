@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storectl
+  namespace: storectl
+  labels:
+    app: storectl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storectl
+  template:
+    metadata:
+      labels:
+        app: storectl
+    spec:
+      containers:
+        - name: storectl
+          image: storectl:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
